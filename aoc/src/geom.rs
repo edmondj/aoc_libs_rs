@@ -1,7 +1,9 @@
 pub mod twod {
     use crate::extensions::SliceExtensions;
-    use core::fmt::Debug;
+    use core::fmt::{self, Debug};
     use std::{
+        fmt::Display,
+        iter,
         ops::{Add, AddAssign, Div, Mul, Rem},
         str::FromStr,
     };
@@ -143,10 +145,40 @@ pub mod twod {
         }
     }
 
+    #[derive(Clone, PartialEq)]
     pub struct Map<T, Cell> {
         pub width: T,
         pub height: T,
         pub cells: std::vec::Vec<Cell>,
+    }
+
+    impl<T, Cell, FromUsizeErr, IntoUsizeErr> fmt::Display for Map<T, Cell>
+    where
+        FromUsizeErr: Debug,
+        T: Mul<Output = T>
+            + Add<Output = T>
+            + Div<Output = T>
+            + Rem<Output = T>
+            + TryFrom<usize, Error = FromUsizeErr>
+            + PartialOrd
+            + Copy,
+        Cell: Clone + Display,
+        IntoUsizeErr: Debug,
+        usize: TryFrom<T, Error = IntoUsizeErr>,
+    {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let height = usize::try_from(self.height).unwrap();
+            let width = usize::try_from(self.width).unwrap();
+            for y in 0..height {
+                if y > 0 {
+                    write!(f, "\n")?;
+                }
+                for x in 0..width {
+                    write!(f, "{}", self.cells[width * y + x])?;
+                }
+            }
+            Ok(())
+        }
     }
 
     impl<T, Cell, FromUsizeErr, IntoUsizeErr> Map<T, Cell>
@@ -154,22 +186,65 @@ pub mod twod {
         FromUsizeErr: Debug,
         T: Mul<Output = T>
             + Add<Output = T>
+            + Div<Output = T>
+            + Rem<Output = T>
             + TryFrom<usize, Error = FromUsizeErr>
             + PartialOrd
             + Copy,
+        Cell: Clone,
         IntoUsizeErr: Debug,
         usize: TryFrom<T, Error = IntoUsizeErr>,
     {
-        pub fn get(&self, Pos(x, y): Pos<T>) -> Option<&Cell> {
-            if x >= T::try_from(0).unwrap()
-                && x < self.width
-                && y >= T::try_from(0).unwrap()
-                && y < self.height
-            {
-                Some(&self.cells[usize::try_from(x + y * self.width).unwrap()])
+        pub fn get(&self, p: Pos<T>) -> Option<&Cell> {
+            self.offset_from_pos(p)
+                .and_then(|offset| self.cells.get(offset))
+        }
+
+        pub fn get_mut(&mut self, p: Pos<T>) -> Option<&mut Cell> {
+            self.offset_from_pos(p)
+                .and_then(|offset| self.cells.get_mut(offset))
+        }
+
+        pub fn swap(&mut self, a: Pos<T>, b: Pos<T>) -> () {
+            if let (Some(a), Some(b)) = (self.offset_from_pos(a), self.offset_from_pos(b)) {
+                self.cells.swap(a, b)
             } else {
-                None
+                panic!("Invalid index")
             }
+        }
+
+        fn pos_from_offset(&self, offset: T) -> Pos<T> {
+            Pos(offset % self.width, offset / self.width)
+        }
+
+        fn offset_from_pos(&self, Pos(x, y): Pos<T>) -> Option<usize> {
+            let zero = T::try_from(0).unwrap();
+            if x < zero || x >= self.width || y < zero || y >= self.width {
+                None
+            } else {
+                match usize::try_from(x + y * self.width) {
+                    Ok(offset) => Some(offset),
+                    Err(_) => None,
+                }
+            }
+        }
+
+        pub fn new(width: T, height: T, value: Cell) -> Self {
+            let cells = std::vec::Vec::from_iter(
+                iter::repeat(value).take((width * height).try_into().unwrap()),
+            );
+            Self {
+                width,
+                height,
+                cells,
+            }
+        }
+
+        pub fn enumerate_cells<'a>(&'a self) -> impl Iterator<Item = (Pos<T>, &'a Cell)> {
+            self.cells
+                .iter()
+                .enumerate()
+                .map(|(i, c)| (self.pos_from_offset(T::try_from(i).unwrap()), c))
         }
     }
 
