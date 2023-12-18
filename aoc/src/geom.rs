@@ -4,7 +4,7 @@ pub mod twod {
     use std::{
         fmt::Display,
         iter,
-        ops::{Add, AddAssign, Div, Mul, Rem},
+        ops::{Add, AddAssign, Div, Mul, Neg, Rem, Sub},
         str::FromStr,
     };
 
@@ -22,6 +22,19 @@ pub mod twod {
 
     #[derive(PartialEq, Eq, Hash, Clone, Copy, Default, Debug)]
     pub struct Vec<T>(pub T, pub T);
+
+    impl<T> Vec<T>
+    where
+        T: Clone + Neg<Output = T>,
+    {
+        pub fn rotated_left(&self) -> Self {
+            Self(self.1.clone(), -self.0.clone())
+        }
+
+        pub fn rotated_right(&self) -> Self {
+            Self(-self.1.clone(), self.0.clone())
+        }
+    }
 
     impl<T> Add<Vec<T>> for Pos<T>
     where
@@ -42,6 +55,17 @@ pub mod twod {
 
         fn add(self, rhs: Dir) -> Self::Output {
             self.add(rhs.as_vec())
+        }
+    }
+
+    impl<T> Sub<Pos<T>> for Pos<T>
+    where
+        T: Sub<T, Output = T>,
+    {
+        type Output = Vec<T>;
+
+        fn sub(self, rhs: Pos<T>) -> Self::Output {
+            Vec(self.0 - rhs.0, self.1 - rhs.1)
         }
     }
 
@@ -75,6 +99,17 @@ pub mod twod {
         }
     }
 
+    impl<T> Sub<Vec<T>> for Vec<T>
+    where
+        T: Sub<T, Output = T>,
+    {
+        type Output = Vec<T>;
+
+        fn sub(self, rhs: Vec<T>) -> Self::Output {
+            Vec(self.0 - rhs.0, self.1 - rhs.1)
+        }
+    }
+
     impl<T, U> From<(U, U)> for Vec<T>
     where
         T: From<U>,
@@ -84,7 +119,7 @@ pub mod twod {
         }
     }
 
-    #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
     pub enum Dir {
         Up,
         Right,
@@ -141,6 +176,32 @@ pub mod twod {
                 Dir::DownRight => Dir::UpLeft,
                 Dir::DownLeft => Dir::UpRight,
                 Dir::UpLeft => Dir::DownRight,
+            }
+        }
+
+        pub fn rotate_left_90(self) -> Self {
+            match self {
+                Dir::Up => Dir::Left,
+                Dir::Right => Dir::Up,
+                Dir::Left => Dir::Down,
+                Dir::Down => Dir::Right,
+                Dir::UpRight => Dir::UpLeft,
+                Dir::DownRight => Dir::UpRight,
+                Dir::DownLeft => Dir::DownRight,
+                Dir::UpLeft => Dir::DownLeft,
+            }
+        }
+
+        pub fn rotate_right_90(self) -> Self {
+            match self {
+                Dir::Up => Dir::Right,
+                Dir::Right => Dir::Down,
+                Dir::Left => Dir::Up,
+                Dir::Down => Dir::Left,
+                Dir::UpRight => Dir::DownRight,
+                Dir::DownRight => Dir::DownLeft,
+                Dir::DownLeft => Dir::UpLeft,
+                Dir::UpLeft => Dir::UpRight,
             }
         }
     }
