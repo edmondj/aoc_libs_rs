@@ -2,9 +2,8 @@
 
 mod extensions;
 pub use crate::extensions::*;
-mod macros;
-pub use crate::macros::*;
 pub mod geom;
+mod macros;
 
 use std::str::FromStr;
 use std::{collections::BTreeMap, fmt, hash::Hash, io};
