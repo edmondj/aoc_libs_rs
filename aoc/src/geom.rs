@@ -110,6 +110,17 @@ pub mod twod {
         }
     }
 
+    impl<T> Mul<T> for Vec<T>
+    where
+        T: Mul<T, Output = T> + Clone,
+    {
+        type Output = Self;
+
+        fn mul(self, rhs: T) -> Self::Output {
+            Self(self.0 * rhs.clone(), self.1 * rhs)
+        }
+    }
+
     impl<T, U> From<(U, U)> for Vec<T>
     where
         T: From<U>,
@@ -203,6 +214,10 @@ pub mod twod {
                 Dir::DownLeft => Dir::UpLeft,
                 Dir::UpLeft => Dir::UpRight,
             }
+        }
+
+        pub fn is_horizontal(&self) -> bool {
+            self == &Dir::Left || self == &Dir::Right
         }
     }
 
