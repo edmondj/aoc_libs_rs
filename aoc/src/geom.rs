@@ -281,6 +281,19 @@ pub mod twod {
                 .and_then(|offset| self.cells.get_mut(offset))
         }
 
+        pub fn get_wrapping(&self, Pos(x, y): Pos<T>) -> Option<&Cell> {
+            let mut x = x % self.width;
+            if x < T::try_from(0).unwrap() {
+                x = x + self.width;
+            }
+            let mut y = y % self.height;
+            if y < T::try_from(0).unwrap() {
+                y = y + self.height;
+            }
+            self.offset_from_pos(Pos(x, y))
+                .and_then(|offset| self.cells.get(offset))
+        }
+
         pub fn swap(&mut self, a: Pos<T>, b: Pos<T>) -> () {
             if let (Some(a), Some(b)) = (self.offset_from_pos(a), self.offset_from_pos(b)) {
                 self.cells.swap(a, b)
