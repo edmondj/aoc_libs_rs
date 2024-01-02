@@ -1,4 +1,5 @@
 #![feature(pattern)]
+#![feature(maybe_uninit_uninit_array_transpose)]
 
 mod extensions;
 pub use crate::extensions::*;
