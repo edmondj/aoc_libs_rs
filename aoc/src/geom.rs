@@ -303,7 +303,11 @@ pub mod twod {
         }
 
         fn pos_from_offset(&self, offset: T) -> Pos<T> {
-            Pos(offset % self.width, offset / self.width)
+            Self::pos_from_offset_width(offset, self.width)
+        }
+
+        fn pos_from_offset_width(offset: T, width: T) -> Pos<T> {
+            Pos(offset % width, offset / width)
         }
 
         fn offset_from_pos(&self, Pos(x, y): Pos<T>) -> Option<usize> {
@@ -329,11 +333,24 @@ pub mod twod {
             }
         }
 
-        pub fn enumerate_cells<'a>(&'a self) -> impl Iterator<Item = (Pos<T>, &'a Cell)> {
+        pub fn enumerate_cells<'a>(
+            &'a self,
+        ) -> impl DoubleEndedIterator<Item = (Pos<T>, &'a Cell)> {
             self.cells
                 .iter()
                 .enumerate()
                 .map(|(i, c)| (self.pos_from_offset(T::try_from(i).unwrap()), c))
+        }
+
+        pub fn enumerate_cells_mut<'a>(
+            &'a mut self,
+        ) -> impl DoubleEndedIterator<Item = (Pos<T>, &'a mut Cell)> {
+            self.cells.iter_mut().enumerate().map(|(i, c)| {
+                (
+                    Self::pos_from_offset_width(T::try_from(i).unwrap(), self.width),
+                    c,
+                )
+            })
         }
     }
 
