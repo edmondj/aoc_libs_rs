@@ -310,7 +310,7 @@ pub mod twod {
             Pos(offset % width, offset / width)
         }
 
-        fn offset_from_pos(&self, Pos(x, y): Pos<T>) -> Option<usize> {
+        pub fn offset_from_pos(&self, Pos(x, y): Pos<T>) -> Option<usize> {
             let zero = T::try_from(0).unwrap();
             if x < zero || x >= self.width || y < zero || y >= self.width {
                 None
