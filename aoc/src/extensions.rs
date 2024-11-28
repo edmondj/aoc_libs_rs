@@ -43,11 +43,8 @@ where
 
 pub trait StrExtensions {
     fn match_advance(&self, pattern: &Self) -> Option<&Self>;
-    fn consume_until<'a, P: Pattern<'a>>(&'a self, pattern: P) -> (&'a Self, &'a Self);
-    fn split_exact<'a, const N: usize, P: Pattern<'a>>(
-        &'a self,
-        pattern: P,
-    ) -> Option<[&'a Self; N]>;
+    fn consume_until<'a, P: Pattern>(&'a self, pattern: P) -> (&'a Self, &'a Self);
+    fn split_exact<'a, const N: usize, P: Pattern>(&'a self, pattern: P) -> Option<[&'a Self; N]>;
 }
 
 impl StrExtensions for str {
@@ -59,15 +56,12 @@ impl StrExtensions for str {
         }
     }
 
-    fn consume_until<'a, P: Pattern<'a>>(&'a self, pattern: P) -> (&'a Self, &'a Self) {
+    fn consume_until<'a, P: Pattern>(&'a self, pattern: P) -> (&'a Self, &'a Self) {
         let found = self.find(pattern).unwrap_or(self.len());
         (&self[0..found], &self[found..])
     }
 
-    fn split_exact<'a, const N: usize, P: Pattern<'a>>(
-        &'a self,
-        pattern: P,
-    ) -> Option<[&'a Self; N]> {
+    fn split_exact<'a, const N: usize, P: Pattern>(&'a self, pattern: P) -> Option<[&'a Self; N]> {
         let mut arr: [MaybeUninit<&'a Self>; N] = unsafe { MaybeUninit::uninit().assume_init() };
 
         let mut splitted = self.split(pattern);
