@@ -4,6 +4,7 @@
 mod extensions;
 pub use crate::extensions::*;
 pub mod geom;
+pub use regex;
 mod macros;
 
 use std::str::FromStr;
