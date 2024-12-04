@@ -69,6 +69,17 @@ pub mod twod {
         }
     }
 
+    impl<T> Sub<Vec<T>> for Pos<T>
+    where
+        T: Sub<T, Output = T>,
+    {
+        type Output = Pos<T>;
+
+        fn sub(self, rhs: Vec<T>) -> Self::Output {
+            Pos(self.0 - rhs.0, self.1 - rhs.1)
+        }
+    }
+
     impl<T> AddAssign<Vec<T>> for Pos<T>
     where
         T: AddAssign<T>,
