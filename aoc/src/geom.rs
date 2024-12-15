@@ -80,6 +80,17 @@ pub mod twod {
         }
     }
 
+    impl<T> Sub<Dir> for Pos<T>
+    where
+        T: Sub<T, Output = T> + Add<T, Output = T> + From<i8>,
+    {
+        type Output = Pos<T>;
+
+        fn sub(self, rhs: Dir) -> Self::Output {
+            self.sub(rhs.as_vec())
+        }
+    }
+
     impl<T> AddAssign<Vec<T>> for Pos<T>
     where
         T: AddAssign<T>,
@@ -174,6 +185,12 @@ pub mod twod {
         ORTHO_DIR.into_iter()
     }
 
+    pub const DIAGONAL_DIR: [Dir; 4] = [Dir::UpLeft, Dir::UpRight, Dir::DownRight, Dir::DownLeft];
+
+    pub fn diagonal_dirs() -> impl Iterator<Item = Dir> {
+        DIAGONAL_DIR.into_iter()
+    }
+
     impl Dir {
         pub fn as_vec<T: From<i8> + Add<T, Output = T>>(&self) -> Vec<T> {
             match self {
@@ -214,6 +231,19 @@ pub mod twod {
             }
         }
 
+        pub fn rotate_left_45(self) -> Self {
+            match self {
+                Dir::Up => Dir::UpLeft,
+                Dir::Right => Dir::UpRight,
+                Dir::Left => Dir::DownLeft,
+                Dir::Down => Dir::DownRight,
+                Dir::UpRight => Dir::Up,
+                Dir::DownRight => Dir::Right,
+                Dir::DownLeft => Dir::Down,
+                Dir::UpLeft => Dir::Left,
+            }
+        }
+
         pub fn rotate_right_90(self) -> Self {
             match self {
                 Dir::Up => Dir::Right,
@@ -227,8 +257,29 @@ pub mod twod {
             }
         }
 
+        pub fn rotate_right_45(self) -> Self {
+            match self {
+                Dir::Up => Dir::UpRight,
+                Dir::Right => Dir::DownRight,
+                Dir::Left => Dir::UpLeft,
+                Dir::Down => Dir::DownLeft,
+                Dir::UpRight => Dir::Right,
+                Dir::DownRight => Dir::Down,
+                Dir::DownLeft => Dir::Left,
+                Dir::UpLeft => Dir::Up,
+            }
+        }
+
         pub fn is_horizontal(&self) -> bool {
             self == &Dir::Left || self == &Dir::Right
+        }
+
+        pub fn is_vertical(&self) -> bool {
+            self == &Dir::Up || self == &Dir::Down
+        }
+
+        pub fn is_orthogonal(&self) -> bool {
+            self.is_horizontal() || self.is_vertical()
         }
     }
 
@@ -323,7 +374,7 @@ pub mod twod {
 
         pub fn offset_from_pos(&self, Pos(x, y): Pos<T>) -> Option<usize> {
             let zero = T::try_from(0).unwrap();
-            if x < zero || x >= self.width || y < zero || y >= self.width {
+            if x < zero || x >= self.width || y < zero || y >= self.height {
                 None
             } else {
                 match usize::try_from(x + y * self.width) {
