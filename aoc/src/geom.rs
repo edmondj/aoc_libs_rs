@@ -432,6 +432,74 @@ pub mod twod {
         }
     }
 
+    pub struct MapBuilder<T, Cell>
+    where
+        Cell: TryFrom<char>,
+    {
+        width: T,
+        height: T,
+        cells: std::vec::Vec<Cell>,
+        error: Option<<Cell as TryFrom<char>>::Error>,
+    }
+
+    impl<T, Cell, FromUsizeErr> MapBuilder<T, Cell>
+    where
+        T: Default
+            + Add
+            + PartialEq
+            + TryFrom<usize, Error = FromUsizeErr>
+            + AddAssign
+            + Debug
+            + Mul<Output = T>
+            + Copy,
+        Cell: TryFrom<char>,
+        FromUsizeErr: Debug,
+    {
+        pub fn new() -> Self {
+            Self {
+                width: T::default(),
+                height: T::default(),
+                cells: std::vec::Vec::new(),
+                error: None,
+            }
+        }
+
+        pub fn feed_line(&mut self, line: &str) {
+            if self.error.is_none() {
+                for c in line.chars() {
+                    match Cell::try_from(c) {
+                        Ok(c) => self.cells.push(c),
+                        Err(e) => {
+                            self.error = Some(e);
+                            return;
+                        }
+                    };
+                }
+                if self.height == T::default() {
+                    self.width = self.cells.len().try_into().unwrap();
+                }
+                self.height += T::try_from(1).unwrap();
+            }
+        }
+
+        pub fn finalize(self) -> Result<Map<T, Cell>, <Cell as TryFrom<char>>::Error> {
+            match self.error {
+                Some(e) => Err(e),
+                None => {
+                    assert_eq!(
+                        self.width * self.height,
+                        self.cells.len().try_into().unwrap()
+                    );
+                    Ok(Map {
+                        width: self.width,
+                        height: self.height,
+                        cells: self.cells,
+                    })
+                }
+            }
+        }
+    }
+
     impl<T, FromUsizeErr, Cell> FromStr for Map<T, Cell>
     where
         Cell: TryFrom<char>,
@@ -448,25 +516,11 @@ pub mod twod {
         type Err = <Cell as TryFrom<char>>::Error;
 
         fn from_str(s: &str) -> Result<Self, Self::Err> {
-            let mut width = T::default();
-            let mut height = T::default();
-            let mut cells = std::vec::Vec::new();
-
+            let mut builder = MapBuilder::new();
             for line in s.lines() {
-                for c in line.chars() {
-                    cells.push(c.try_into()?);
-                }
-                if height == T::default() {
-                    width = cells.len().try_into().unwrap();
-                }
-                height += T::try_from(1).unwrap();
+                builder.feed_line(line);
             }
-            assert_eq!(width * height, cells.len().try_into().unwrap());
-            Ok(Self {
-                width,
-                height,
-                cells,
-            })
+            builder.finalize()
         }
     }
 }
