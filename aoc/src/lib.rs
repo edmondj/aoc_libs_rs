@@ -7,6 +7,7 @@ pub mod geom;
 pub use regex;
 mod macros;
 
+use std::fs::{create_dir_all, File};
 use std::str::FromStr;
 use std::{collections::BTreeMap, fmt, hash::Hash, io};
 pub trait DisplayableDayResult: fmt::Display {}
@@ -121,6 +122,11 @@ pub fn exchange<T: Clone>(storage: &mut T, value: T) -> T {
     let old = storage.clone();
     *storage = value;
     old
+}
+
+pub fn create_help_file(name: &str) -> io::Result<File> {
+    create_dir_all("help")?;
+    File::create(format!("help/{name}.txt"))
 }
 
 #[cfg(test)]
