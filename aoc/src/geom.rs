@@ -4,7 +4,7 @@ pub mod twod {
     use std::{
         fmt::Display,
         iter,
-        ops::{Add, AddAssign, Div, Mul, Neg, Rem, Sub},
+        ops::{Add, AddAssign, Div, Mul, Neg, Rem, Sub, SubAssign},
         str::FromStr,
     };
 
@@ -129,6 +129,16 @@ pub mod twod {
 
         fn sub(self, rhs: Vec<T>) -> Self::Output {
             Vec(self.0 - rhs.0, self.1 - rhs.1)
+        }
+    }
+
+    impl<T> SubAssign<Vec<T>> for Vec<T>
+    where
+        T: SubAssign<T>,
+    {
+        fn sub_assign(&mut self, rhs: Vec<T>) {
+            self.0 -= rhs.0;
+            self.1 -= rhs.1;
         }
     }
 
