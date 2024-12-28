@@ -1,10 +1,12 @@
 #[macro_export]
 macro_rules! static_regex {
-    (let $var:ident = regex($pattern:literal);) => {
-        let $var = {
-            static PATTERN: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
-            PATTERN.get_or_init(|| regex::Regex::new($pattern).unwrap())
-        };
+    ($(let $var:ident = regex($pattern:literal);)+) => {
+        $(
+            let $var = {
+                static PATTERN: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+                PATTERN.get_or_init(|| regex::Regex::new($pattern).unwrap())
+            };
+        )+
     };
 }
 
