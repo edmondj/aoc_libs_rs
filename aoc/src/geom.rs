@@ -4,8 +4,9 @@ pub mod twod {
     use std::{
         fmt::Display,
         iter,
-        ops::{Add, AddAssign, Div, Mul, Neg, Rem, Sub, SubAssign},
+        ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign},
         str::FromStr,
+        vec,
     };
 
     #[derive(PartialEq, Eq, Hash, Clone, Copy, Default, Debug)]
@@ -293,80 +294,53 @@ pub mod twod {
         }
     }
 
-    #[derive(Clone, PartialEq)]
-    pub struct Map<T, Cell> {
-        pub width: T,
-        pub height: T,
+    #[derive(Clone, PartialEq, Eq, Hash)]
+    pub struct Map<Cell> {
+        pub width: usize,
+        pub height: usize,
         pub cells: std::vec::Vec<Cell>,
     }
 
-    impl<T, Cell, FromUsizeErr, IntoUsizeErr> fmt::Display for Map<T, Cell>
+    impl<Cell> fmt::Display for Map<Cell>
     where
-        FromUsizeErr: Debug,
-        T: Mul<Output = T>
-            + Add<Output = T>
-            + Div<Output = T>
-            + Rem<Output = T>
-            + TryFrom<usize, Error = FromUsizeErr>
-            + PartialOrd
-            + Copy,
-        Cell: Clone + Display,
-        IntoUsizeErr: Debug,
-        usize: TryFrom<T, Error = IntoUsizeErr>,
+        Cell: Display,
     {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            let height = usize::try_from(self.height).unwrap();
-            let width = usize::try_from(self.width).unwrap();
-            for y in 0..height {
-                if y > 0 {
+            for (Pos(x, y), cell) in self.enumerate_cells() {
+                if x == 0 && y > 0 {
                     write!(f, "\n")?;
                 }
-                for x in 0..width {
-                    write!(f, "{}", self.cells[width * y + x])?;
-                }
+                write!(f, "{cell}")?;
             }
             Ok(())
         }
     }
 
-    impl<T, Cell, FromUsizeErr, IntoUsizeErr> Map<T, Cell>
-    where
-        FromUsizeErr: Debug,
-        T: Mul<Output = T>
-            + Add<Output = T>
-            + Div<Output = T>
-            + Rem<Output = T>
-            + TryFrom<usize, Error = FromUsizeErr>
-            + PartialOrd
-            + Copy,
-        Cell: Clone,
-        IntoUsizeErr: Debug,
-        usize: TryFrom<T, Error = IntoUsizeErr>,
-    {
-        pub fn get(&self, p: Pos<T>) -> Option<&Cell> {
+    impl<Cell> Map<Cell> {
+        pub fn get(&self, p: Pos<usize>) -> Option<&Cell> {
             self.offset_from_pos(p)
                 .and_then(|offset| self.cells.get(offset))
         }
 
-        pub fn get_mut(&mut self, p: Pos<T>) -> Option<&mut Cell> {
+        pub fn get_mut(&mut self, p: Pos<usize>) -> Option<&mut Cell> {
             self.offset_from_pos(p)
                 .and_then(|offset| self.cells.get_mut(offset))
         }
 
-        pub fn get_wrapping(&self, Pos(x, y): Pos<T>) -> Option<&Cell> {
-            let mut x = x % self.width;
-            if x < T::try_from(0).unwrap() {
-                x = x + self.width;
+        pub fn get_wrapping<T>(&self, Pos(x, y): Pos<isize>) -> Option<&Cell> {
+            let mut x = x % self.width as isize;
+            if x < 0 {
+                x = x + self.width as isize;
             }
-            let mut y = y % self.height;
-            if y < T::try_from(0).unwrap() {
-                y = y + self.height;
+            let mut y = y % self.height as isize;
+            if y < 0 {
+                y = y + self.height as isize;
             }
-            self.offset_from_pos(Pos(x, y))
+            self.offset_from_pos(Pos(x as usize, y as usize))
                 .and_then(|offset| self.cells.get(offset))
         }
 
-        pub fn swap(&mut self, a: Pos<T>, b: Pos<T>) -> () {
+        pub fn swap(&mut self, a: Pos<usize>, b: Pos<usize>) -> () {
             if let (Some(a), Some(b)) = (self.offset_from_pos(a), self.offset_from_pos(b)) {
                 self.cells.swap(a, b)
             } else {
@@ -374,17 +348,16 @@ pub mod twod {
             }
         }
 
-        fn pos_from_offset(&self, offset: T) -> Pos<T> {
+        fn pos_from_offset(&self, offset: usize) -> Pos<usize> {
             Self::pos_from_offset_width(offset, self.width)
         }
 
-        fn pos_from_offset_width(offset: T, width: T) -> Pos<T> {
+        fn pos_from_offset_width(offset: usize, width: usize) -> Pos<usize> {
             Pos(offset % width, offset / width)
         }
 
-        pub fn offset_from_pos(&self, Pos(x, y): Pos<T>) -> Option<usize> {
-            let zero = T::try_from(0).unwrap();
-            if x < zero || x >= self.width || y < zero || y >= self.height {
+        pub fn offset_from_pos(&self, Pos(x, y): Pos<usize>) -> Option<usize> {
+            if x >= self.width || y >= self.height {
                 None
             } else {
                 match usize::try_from(x + y * self.width) {
@@ -394,10 +367,31 @@ pub mod twod {
             }
         }
 
-        pub fn new(width: T, height: T, value: Cell) -> Self {
-            let cells = std::vec::Vec::from_iter(
-                iter::repeat(value).take((width * height).try_into().unwrap()),
-            );
+        pub fn enumerate_cells<'a>(
+            &'a self,
+        ) -> impl DoubleEndedIterator<Item = (Pos<usize>, &'a Cell)> {
+            self.cells
+                .iter()
+                .enumerate()
+                .map(|(i, c)| (self.pos_from_offset(i), c))
+        }
+
+        pub fn enumerate_cells_mut<'a>(
+            &'a mut self,
+        ) -> impl DoubleEndedIterator<Item = (Pos<usize>, &'a mut Cell)> {
+            self.cells
+                .iter_mut()
+                .enumerate()
+                .map(|(i, c)| (Self::pos_from_offset_width(i, self.width), c))
+        }
+    }
+
+    impl<Cell> Map<Cell>
+    where
+        Cell: Clone,
+    {
+        pub fn new(width: usize, height: usize, value: Cell) -> Self {
+            let cells = std::vec::Vec::from_iter(iter::repeat(value).take(width * height));
             Self {
                 width,
                 height,
@@ -405,70 +399,128 @@ pub mod twod {
             }
         }
 
-        pub fn enumerate_cells<'a>(
-            &'a self,
-        ) -> impl DoubleEndedIterator<Item = (Pos<T>, &'a Cell)> {
-            self.cells
-                .iter()
-                .enumerate()
-                .map(|(i, c)| (self.pos_from_offset(T::try_from(i).unwrap()), c))
+        pub fn rotate_right(&self) -> Self {
+            let mut cells = self.cells.clone();
+            for (Pos(x, y), cell) in self.enumerate_cells() {
+                let new_offset = x * self.height + (self.height - y - 1);
+                cells[usize::try_from(new_offset).unwrap()] = cell.clone();
+            }
+            Self {
+                width: self.height,
+                height: self.width,
+                cells,
+            }
         }
 
-        pub fn enumerate_cells_mut<'a>(
-            &'a mut self,
-        ) -> impl DoubleEndedIterator<Item = (Pos<T>, &'a mut Cell)> {
-            self.cells.iter_mut().enumerate().map(|(i, c)| {
-                (
-                    Self::pos_from_offset_width(T::try_from(i).unwrap(), self.width),
-                    c,
-                )
-            })
+        pub fn horizontal_flip(&self) -> Self {
+            let mut sent = self.clone();
+            for y in 0..sent.height {
+                for x in 0..sent.width / 2 {
+                    sent.swap(Pos(x, y), Pos(self.width - x - 1, y));
+                }
+            }
+            sent
+        }
+
+        pub fn split_regions(&self, width: usize, height: usize) -> Option<vec::Vec<Self>> {
+            if self.width % width != 0 || self.height % height != 0 {
+                None
+            } else {
+                let mut result = vec::Vec::with_capacity(self.width / width * self.height / height);
+                let mut x = 0;
+                let mut y = 0;
+                while x < self.width && y < self.height {
+                    let mut sub = vec::Vec::with_capacity(width * height);
+                    for i in 0..height {
+                        let start = self.offset_from_pos(Pos(x, y + i)).unwrap();
+                        sub.extend_from_slice(&self.cells[start..start + width]);
+                    }
+
+                    result.push(Self {
+                        width,
+                        height,
+                        cells: sub,
+                    });
+
+                    x += width;
+                    if x >= self.width {
+                        y += width;
+                        x = 0;
+                    }
+                }
+                Some(result)
+            }
         }
     }
 
-    impl<T, Cell, FromUsizeErr> Map<T, Cell>
+    pub trait MapCombinable {
+        type Output;
+
+        fn combine(&self, maps_per_row: usize) -> Self::Output;
+    }
+
+    impl<Cell> MapCombinable for [Map<Cell>]
     where
-        Cell: PartialEq,
-        FromUsizeErr: Debug,
-        T: Div<Output = T> + TryFrom<usize, Error = FromUsizeErr> + Rem<Output = T> + Copy,
+        Cell: Clone + Default,
     {
-        pub fn pos_of(&self, c: &Cell) -> Option<Pos<T>> {
-            self.cells.index_of(c).map(|index| {
-                Pos(
-                    T::try_from(index).unwrap() % self.width,
-                    T::try_from(index).unwrap() / self.width,
-                )
-            })
+        type Output = Option<Map<Cell>>;
+
+        fn combine(&self, maps_per_row: usize) -> Self::Output {
+            if self.is_empty() {
+                None
+            } else {
+                let sub_width = self[0].width;
+                let sub_height = self[0].height;
+                let mut result = Map::new(
+                    sub_width * maps_per_row,
+                    sub_height * (self.len() / maps_per_row),
+                    Cell::default(),
+                );
+
+                for (i, sub) in self.iter().enumerate() {
+                    if sub.width != sub_width || sub.height != sub_height {
+                        return None;
+                    }
+                    let top_left = Pos(i % maps_per_row * sub_width, i / maps_per_row * sub_height);
+                    for (Pos(x, y), cell) in sub.enumerate_cells() {
+                        *result.get_mut(top_left + Vec(x, y)).unwrap() = cell.clone();
+                    }
+                }
+
+                Some(result)
+            }
         }
     }
 
-    pub struct MapBuilder<T, Cell>
+    impl<Cell> Map<Cell>
+    where
+        Cell: PartialEq + Clone,
+    {
+        pub fn pos_of(&self, c: &Cell) -> Option<Pos<usize>> {
+            self.cells
+                .index_of(c)
+                .map(|index| self.pos_from_offset(index))
+        }
+    }
+
+    pub struct MapBuilder<Cell>
     where
         Cell: TryFrom<char>,
     {
-        width: T,
-        height: T,
+        width: usize,
+        height: usize,
         cells: std::vec::Vec<Cell>,
         error: Option<<Cell as TryFrom<char>>::Error>,
     }
 
-    impl<T, Cell, FromUsizeErr> MapBuilder<T, Cell>
+    impl<Cell> MapBuilder<Cell>
     where
-        T: Default
-            + Add
-            + PartialEq
-            + TryFrom<usize, Error = FromUsizeErr>
-            + AddAssign
-            + Debug
-            + Mul<Output = T>
-            + Copy,
         Cell: TryFrom<char>,
-        FromUsizeErr: Debug,
     {
         pub fn new() -> Self {
             Self {
-                width: T::default(),
-                height: T::default(),
+                width: 0,
+                height: 0,
                 cells: std::vec::Vec::new(),
                 error: None,
             }
@@ -485,21 +537,18 @@ pub mod twod {
                         }
                     };
                 }
-                if self.height == T::default() {
-                    self.width = self.cells.len().try_into().unwrap();
+                if self.height == 0 {
+                    self.width = self.cells.len();
                 }
-                self.height += T::try_from(1).unwrap();
+                self.height += 1;
             }
         }
 
-        pub fn finalize(self) -> Result<Map<T, Cell>, <Cell as TryFrom<char>>::Error> {
+        pub fn finalize(self) -> Result<Map<Cell>, <Cell as TryFrom<char>>::Error> {
             match self.error {
                 Some(e) => Err(e),
                 None => {
-                    assert_eq!(
-                        self.width * self.height,
-                        self.cells.len().try_into().unwrap()
-                    );
+                    assert_eq!(self.width * self.height, self.cells.len());
                     Ok(Map {
                         width: self.width,
                         height: self.height,
@@ -510,18 +559,9 @@ pub mod twod {
         }
     }
 
-    impl<T, FromUsizeErr, Cell> FromStr for Map<T, Cell>
+    impl<Cell> FromStr for Map<Cell>
     where
         Cell: TryFrom<char>,
-        FromUsizeErr: Debug,
-        T: Default
-            + Add
-            + PartialEq
-            + TryFrom<usize, Error = FromUsizeErr>
-            + AddAssign
-            + Debug
-            + Mul<Output = T>
-            + Copy,
     {
         type Err = <Cell as TryFrom<char>>::Error;
 
